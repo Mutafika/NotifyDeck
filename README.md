@@ -71,22 +71,22 @@ brew tap mugendesk/tap
 brew install --cask notipon
 ```
 
+Quarantine is automatically removed during installation — no extra steps needed.
+
 ### Manual Download
 
 1. Download `Notipon.zip` from the [latest release](https://github.com/Mugendesk/Notipon/releases/latest)
 2. Extract the ZIP file
 3. Move `Notipon.app` to `/Applications` folder
-4. Launch the app (first time: right-click → "Open")
+4. Remove quarantine before first launch:
+   ```bash
+   xattr -cr /Applications/Notipon.app
+   ```
+5. Launch the app
 
-### Note
+### Why is this needed?
 
-This app is currently unsigned. For first launch:
-
-1. **Right-click** on `Notipon.app`
-2. Select **"Open"**
-3. Click **"Open"** in the warning dialog
-
-If installed via Homebrew, macOS may still show the warning on first launch.
+This app is currently unsigned. macOS blocks unsigned apps by default (Gatekeeper). The `xattr -cr` command removes the quarantine flag so the app can launch normally.
 
 ## Required Permissions
 

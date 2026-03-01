@@ -16,6 +16,7 @@ struct NotiponApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
+    private let updaterManager = UpdaterManager.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Dockアイコンを非表示
@@ -37,8 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // 通知監視開始
             self.startMonitoring()
 
-            // バージョンチェック（3秒遅延）
-            self.checkForUpdates()
+            // Sparkle自動アップデートチェック（UpdaterManager初期化時に開始済み）
 
             print("Notipon: Started successfully")
         }
@@ -92,10 +92,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func checkForUpdates() {
-        // 起動から3秒後にバージョンチェック（UI表示後）
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            VersionChecker.shared.checkForUpdates()
-        }
-    }
 }

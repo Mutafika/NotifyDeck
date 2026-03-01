@@ -5,6 +5,7 @@ import ServiceManagement
 struct SettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var storageManager: StorageManager
+    @ObservedObject private var updaterManager = UpdaterManager.shared
 
     @State private var showingClearConfirmation = false
     @State private var showingAddAppSheet = false
@@ -487,6 +488,18 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+
+                // アップデート確認ボタン
+                Button(action: {
+                    updaterManager.checkForUpdates()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("アップデートを確認")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .disabled(!updaterManager.canCheckForUpdates)
 
                 Divider()
 

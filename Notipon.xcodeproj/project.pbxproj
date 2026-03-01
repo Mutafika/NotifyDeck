@@ -30,9 +30,10 @@
 		B10000000000000000000015 /* NotificationPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000017 /* NotificationPopupView.swift */; };
 		B10000000000000000000016 /* AccessibilityNotificationObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000018 /* AccessibilityNotificationObserver.swift */; };
 		B10000000000000000000017 /* AppConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000019 /* AppConstants.swift */; };
-		B10000000000000000000018 /* VersionChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000001A /* VersionChecker.swift */; };
 		B10000000000000000000019 /* KeyboardShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000001B /* KeyboardShortcut.swift */; };
 		B1000000000000000000001A /* KeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000001C /* KeyRecorderView.swift */; };
+		B1000000000000000000001B /* UpdaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000001D /* UpdaterManager.swift */; };
+		B10000000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = B60000000000000000000003 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,9 +62,9 @@
 		B20000000000000000000017 /* NotificationPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPopupView.swift; sourceTree = "<group>"; };
 		B20000000000000000000018 /* AccessibilityNotificationObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityNotificationObserver.swift; sourceTree = "<group>"; };
 		B20000000000000000000019 /* AppConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConstants.swift; sourceTree = "<group>"; };
-		B2000000000000000000001A /* VersionChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionChecker.swift; sourceTree = "<group>"; };
 		B2000000000000000000001B /* KeyboardShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcut.swift; sourceTree = "<group>"; };
 		B2000000000000000000001C /* KeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyRecorderView.swift; sourceTree = "<group>"; };
+		B2000000000000000000001D /* UpdaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +73,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B10000000000000000000013 /* GRDB in Frameworks */,
+				B10000000000000000000020 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,7 +130,7 @@
 				B20000000000000000000008 /* SettingsManager.swift */,
 				B20000000000000000000018 /* AccessibilityNotificationObserver.swift */,
 				B20000000000000000000019 /* AppConstants.swift */,
-				B2000000000000000000001A /* VersionChecker.swift */,
+				B2000000000000000000001D /* UpdaterManager.swift */,
 				B2000000000000000000001B /* KeyboardShortcut.swift */,
 			);
 			path = Core;
@@ -194,6 +196,7 @@
 			name = Notipon;
 			packageProductDependencies = (
 				B60000000000000000000001 /* GRDB */,
+				B60000000000000000000003 /* Sparkle */,
 			);
 			productName = Notipon;
 			productReference = B20000000000000000000015 /* Notipon.app */;
@@ -226,6 +229,7 @@
 			mainGroup = B40000000000000000000001;
 			packageReferences = (
 				B60000000000000000000002 /* XCRemoteSwiftPackageReference "GRDB" */,
+				B60000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = B40000000000000000000003 /* Products */;
 			projectDirPath = "";
@@ -273,7 +277,7 @@
 				B10000000000000000000015 /* NotificationPopupView.swift in Sources */,
 				B10000000000000000000016 /* AccessibilityNotificationObserver.swift in Sources */,
 				B10000000000000000000017 /* AppConstants.swift in Sources */,
-				B10000000000000000000018 /* VersionChecker.swift in Sources */,
+				B1000000000000000000001B /* UpdaterManager.swift in Sources */,
 				B10000000000000000000019 /* KeyboardShortcut.swift in Sources */,
 				B1000000000000000000001A /* KeyRecorderView.swift in Sources */,
 			);
@@ -409,7 +413,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = DHU8C4N287;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Notipon/Info.plist;
@@ -437,7 +441,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = DHU8C4N287;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Notipon/Info.plist;
@@ -488,6 +492,14 @@
 				minimumVersion = 6.0.0;
 			};
 		};
+		B60000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -495,6 +507,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B60000000000000000000002 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
+		};
+		B60000000000000000000003 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B60000000000000000000004 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

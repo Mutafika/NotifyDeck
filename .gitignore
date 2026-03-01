@@ -24,5 +24,8 @@ Package.resolved
 # CocoaPods
 Pods/
 
+# Distribution
+dist/
+
 # macOS
 .DS_Store

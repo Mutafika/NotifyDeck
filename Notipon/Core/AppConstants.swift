@@ -29,8 +29,7 @@ enum AppConstants {
 
     static let githubURL = URL(string: "https://github.com/Mugendesk/Notipon")!
     static let buyMeCoffeeURL = URL(string: "https://example.com/donate")!  // 仮URL（後で変更可能）
-    static let versionCheckURL = URL(string: "https://mugendesk.github.io/Notipon/version.json")!
-    static let updateDownloadURL = URL(string: "https://github.com/Mugendesk/Notipon/releases/latest")!
+    static let appcastURL = URL(string: "https://mugendesk.github.io/Notipon/appcast.xml")!
 
     // MARK: - License
 
