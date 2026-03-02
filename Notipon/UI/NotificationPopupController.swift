@@ -12,6 +12,7 @@ final class NotificationPopupController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var settingsManager: SettingsManager { SettingsManager.shared }
     private var isUpdatingFromSettings = false  // 無限ループ防止フラグ
+    private var frameUpdateWorkItem: DispatchWorkItem?  // フレーム更新デバウンス用
 
     /// 現在表示中の通知
     @Published var currentNotification: NotificationItem?
@@ -72,13 +73,20 @@ final class NotificationPopupController: ObservableObject {
     }
 
     private func applyCurrentFrame() {
-        let frame = NSRect(
-            x: settingsManager.popupX,
-            y: settingsManager.popupY,
-            width: settingsManager.popupWidth,
-            height: settingsManager.popupHeight
-        )
-        updateWindowFrame(frame)
+        // 前回のスケジュールをキャンセル（高頻度呼び出しをデバウンス）
+        frameUpdateWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            let frame = NSRect(
+                x: self.settingsManager.popupX,
+                y: self.settingsManager.popupY,
+                width: self.settingsManager.popupWidth,
+                height: self.settingsManager.popupHeight
+            )
+            self.updateWindowFrame(frame)
+        }
+        frameUpdateWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
     }
 
     // MARK: - Show Notification
