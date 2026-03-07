@@ -10,9 +10,8 @@ final class NotificationPopupController: ObservableObject {
     private var hostingView: NSHostingView<AnyView>?
     private var dismissTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
-    private var settingsManager: SettingsManager { SettingsManager.shared }
+    private let settingsManager = SettingsManager.shared
     private var isUpdatingFromSettings = false  // 無限ループ防止フラグ
-    private var frameUpdateWorkItem: DispatchWorkItem?  // フレーム更新デバウンス用
 
     /// 現在表示中の通知
     @Published var currentNotification: NotificationItem?
@@ -28,6 +27,11 @@ final class NotificationPopupController: ObservableObject {
         }
     }
 
+    deinit {
+        dismissTimer?.invalidate()
+        cancellables.removeAll()
+    }
+
     /// ウィンドウを事前作成してレンダリングを完了させる
     private func preloadWindow() {
         createWindow()
@@ -39,30 +43,16 @@ final class NotificationPopupController: ObservableObject {
     // MARK: - Settings Observer
 
     private func observeSettings() {
-        // 各設定を個別に監視（CombineLatest4だと順序問題が起きる可能性）
-        settingsManager.$popupX
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.applyCurrentFrame() }
-            .store(in: &cancellables)
-
-        settingsManager.$popupY
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.applyCurrentFrame() }
-            .store(in: &cancellables)
-
-        settingsManager.$popupWidth
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.applyCurrentFrame() }
-            .store(in: &cancellables)
-
-        settingsManager.$popupHeight
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.applyCurrentFrame() }
-            .store(in: &cancellables)
+        // フレーム関連の4プロパティを統合監視 + デバウンス
+        Publishers.Merge4(
+            settingsManager.$popupX.dropFirst().map { _ in },
+            settingsManager.$popupY.dropFirst().map { _ in },
+            settingsManager.$popupWidth.dropFirst().map { _ in },
+            settingsManager.$popupHeight.dropFirst().map { _ in }
+        )
+        .debounce(for: .milliseconds(50), scheduler: DispatchQueue.main)
+        .sink { [weak self] in self?.applyCurrentFrame() }
+        .store(in: &cancellables)
 
         settingsManager.$popupOpacity
             .receive(on: DispatchQueue.main)
@@ -73,20 +63,7 @@ final class NotificationPopupController: ObservableObject {
     }
 
     private func applyCurrentFrame() {
-        // 前回のスケジュールをキャンセル（高頻度呼び出しをデバウンス）
-        frameUpdateWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self = self else { return }
-            let frame = NSRect(
-                x: self.settingsManager.popupX,
-                y: self.settingsManager.popupY,
-                width: self.settingsManager.popupWidth,
-                height: self.settingsManager.popupHeight
-            )
-            self.updateWindowFrame(frame)
-        }
-        frameUpdateWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
+        updateWindowFrame(settingsManager.popupFrame)
     }
 
     // MARK: - Show Notification
@@ -197,9 +174,9 @@ final class NotificationPopupController: ObservableObject {
         dismissTimer = nil
 
         // フェードアウトアニメーション
-        NSAnimationContext.runAnimationGroup({ context in
+        NSAnimationContext.runAnimationGroup({ [weak self] context in
             context.duration = 0.2
-            popupWindow?.animator().alphaValue = 0
+            self?.popupWindow?.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             self?.popupWindow?.orderOut(nil)
             self?.currentNotification = nil
