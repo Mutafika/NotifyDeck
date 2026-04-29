@@ -97,7 +97,8 @@ final class StorageManager: ObservableObject {
         try dbQueue?.write { db in
             try notification.save(db)
         }
-        // メモリ上に挿入（timestamp降順の正しい位置に）
+        // 既存の同IDを除去してから挿入（upsert相当）
+        notifications.removeAll { $0.id == notification.id }
         let index = notifications.firstIndex { $0.timestamp <= notification.timestamp } ?? notifications.endIndex
         notifications.insert(notification, at: index)
         rebuildDerivedState()
@@ -113,7 +114,9 @@ final class StorageManager: ObservableObject {
                 try notification.save(db)
             }
         }
-        // 一括追加はソート済み配列を再構築
+        // 既存の同IDを除去してから追加（upsert相当）
+        let newIds = Set(filtered.map { $0.id })
+        notifications.removeAll { newIds.contains($0.id) }
         notifications.append(contentsOf: filtered)
         notifications.sort { $0.timestamp > $1.timestamp }
         rebuildDerivedState()
