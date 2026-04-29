@@ -17,12 +17,22 @@ struct NotiponApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
     private let updaterManager = UpdaterManager.shared
+    /// メニューバーの「終了」から明示的に呼ばれた場合のみ true
+    var isExplicitQuit = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Dockアイコンを非表示
         NSApp.setActivationPolicy(.accessory)
 
         print("Notipon: Starting...")
+
+        // スリープ復帰時にメニューバーアイコンを再構築
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
 
         // メニューバーコントローラー初期化（遅延）
         DispatchQueue.main.async {
@@ -44,8 +54,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func handleWake() {
+        // スリープ復帰後にメニューバーが消えることがあるため再初期化
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            if self.menuBarController == nil {
+                self.menuBarController = MenuBarController()
+            }
+            self.menuBarController?.refreshStatusItem()
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if isExplicitQuit {
+            return .terminateNow
+        }
+        // システムイベント（シャットダウン/ログアウト/再起動）は許可
+        if let event = NSApp.currentEvent, event.type != .appKitDefined {
+            return .terminateNow
+        }
+        // SwiftUIのウィンドウ閉じによる自動終了のみキャンセル
+        return .terminateCancel
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -100,6 +100,11 @@ final class MenuBarController: NSObject, ObservableObject {
         )
     }
 
+    /// スリープ復帰後にステータスアイテムをリフレッシュ
+    func refreshStatusItem() {
+        updateIcon()
+    }
+
     // MARK: - Icon Update
 
     private func updateIcon() {

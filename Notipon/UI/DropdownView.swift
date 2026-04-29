@@ -140,6 +140,9 @@ struct DropdownView: View {
     }
 
     private func quitApp() {
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.isExplicitQuit = true
+        }
         NSApplication.shared.terminate(nil)
     }
 }

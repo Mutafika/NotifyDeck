@@ -91,7 +91,7 @@ struct HistoryWindowView: View {
                     )
 
                     // アプリ別
-                    ForEach(storageManager.fetchApps(), id: \.identifier) { app in
+                    ForEach(storageManager.apps, id: \.identifier) { app in
                         sidebarItem(
                             name: app.name,
                             icon: "app.fill",
@@ -302,42 +302,39 @@ struct HistoryWindowView: View {
 
     // MARK: - Helper
 
+    private static let dateGroupFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "M月d日（E）"
+        return f
+    }()
+
     private func groupByDate(_ notifications: [NotificationItem]) -> [(date: String, notifications: [NotificationItem])] {
         let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
         var groups: [String: (date: Date, notifications: [NotificationItem])] = [:]
 
         for notification in notifications {
+            let startOfDay = calendar.startOfDay(for: notification.timestamp)
             let key: String
-            let groupDate: Date
 
-            if calendar.isDateInToday(notification.timestamp) {
+            if startOfDay == today {
                 key = "今日"
-                groupDate = calendar.startOfDay(for: Date())
-            } else if calendar.isDateInYesterday(notification.timestamp) {
+            } else if startOfDay == yesterday {
                 key = "昨日"
-                groupDate = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date()))!
             } else {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "ja_JP")
-                formatter.dateFormat = "M月d日（E）"
-                key = formatter.string(from: notification.timestamp)
-                groupDate = calendar.startOfDay(for: notification.timestamp)
+                key = Self.dateGroupFormatter.string(from: notification.timestamp)
             }
 
             if groups[key] == nil {
-                groups[key] = (date: groupDate, notifications: [])
+                groups[key] = (date: startOfDay, notifications: [])
             }
             groups[key]?.notifications.append(notification)
         }
 
-        // Dateでソート（新しい順）
-        let sortedKeys = groups.keys.sorted { key1, key2 in
-            let date1 = groups[key1]!.date
-            let date2 = groups[key2]!.date
-            return date1 > date2
-        }
-
-        return sortedKeys.map { (date: $0, notifications: groups[$0]!.notifications) }
+        return groups.sorted { $0.value.date > $1.value.date }
+            .map { (date: $0.key, notifications: $0.value.notifications) }
     }
 
     // MARK: - Keyboard Shortcuts

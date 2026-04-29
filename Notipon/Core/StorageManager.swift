@@ -11,6 +11,7 @@ final class StorageManager: ObservableObject {
 
     @Published private(set) var notifications: [NotificationItem] = []
     @Published private(set) var unreadCount: Int = 0
+    @Published private(set) var apps: [(identifier: String, name: String, count: Int)] = []
     @Published private(set) var storageInfo: StorageInfo = StorageInfo()
 
     struct StorageInfo {
@@ -91,25 +92,31 @@ final class StorageManager: ObservableObject {
 
     /// 通知を保存
     func save(_ notification: NotificationItem) throws {
-        // 除外アプリチェック
         guard !settingsManager.isAppExcluded(notification.appIdentifier) else { return }
 
         try dbQueue?.write { db in
             try notification.save(db)
         }
-        refreshNotifications()
+        // メモリ上に挿入（timestamp降順の正しい位置に）
+        let index = notifications.firstIndex { $0.timestamp <= notification.timestamp } ?? notifications.endIndex
+        notifications.insert(notification, at: index)
+        rebuildDerivedState()
     }
 
     /// 複数の通知を一括保存
-    func saveAll(_ notifications: [NotificationItem]) throws {
-        let filtered = notifications.filter { !settingsManager.isAppExcluded($0.appIdentifier) }
+    func saveAll(_ items: [NotificationItem]) throws {
+        let filtered = items.filter { !settingsManager.isAppExcluded($0.appIdentifier) }
+        guard !filtered.isEmpty else { return }
 
         try dbQueue?.write { db in
             for notification in filtered {
                 try notification.save(db)
             }
         }
-        refreshNotifications()
+        // 一括追加はソート済み配列を再構築
+        notifications.append(contentsOf: filtered)
+        notifications.sort { $0.timestamp > $1.timestamp }
+        rebuildDerivedState()
     }
 
     /// 通知を既読にする
@@ -120,7 +127,10 @@ final class StorageManager: ObservableObject {
                 arguments: [id]
             )
         }
-        refreshNotifications()
+        if let idx = notifications.firstIndex(where: { $0.id == id }), !notifications[idx].isRead {
+            notifications[idx].isRead = true
+            unreadCount = max(unreadCount - 1, 0)
+        }
     }
 
     /// 全て既読にする
@@ -128,7 +138,10 @@ final class StorageManager: ObservableObject {
         try dbQueue?.write { db in
             try db.execute(sql: "UPDATE notifications SET is_read = 1")
         }
-        refreshNotifications()
+        for i in notifications.indices {
+            notifications[i].isRead = true
+        }
+        unreadCount = 0
     }
 
     /// 通知を削除
@@ -139,7 +152,8 @@ final class StorageManager: ObservableObject {
                 arguments: [id]
             )
         }
-        refreshNotifications()
+        notifications.removeAll { $0.id == id }
+        rebuildDerivedState()
     }
 
     /// 古い通知を削除
@@ -153,10 +167,10 @@ final class StorageManager: ObservableObject {
                 sql: "DELETE FROM notifications WHERE timestamp < ?",
                 arguments: [cutoffDate]
             )
-            // データベースファイルを最適化・圧縮
             try db.execute(sql: "VACUUM")
         }
-        refreshNotifications()
+        notifications.removeAll { $0.timestamp < cutoffDate }
+        rebuildDerivedState()
         updateStorageInfo()
     }
 
@@ -164,16 +178,16 @@ final class StorageManager: ObservableObject {
     func deleteAll() throws {
         try dbQueue?.write { db in
             try db.execute(sql: "DELETE FROM notifications")
-            // データベースファイルを最適化・圧縮
             try db.execute(sql: "VACUUM")
         }
-        refreshNotifications()
+        notifications.removeAll()
+        rebuildDerivedState()
         updateStorageInfo()
     }
 
     // MARK: - Fetch Operations
 
-    /// 通知一覧を更新（画像データを除外して軽量に取得）
+    /// 通知一覧をDBから全件再取得（初回起動・大量削除後のみ使用）
     func refreshNotifications() {
         do {
             notifications = try dbQueue?.read { db in
@@ -187,11 +201,27 @@ final class StorageManager: ObservableObject {
                     .fetchAll(db)
             } ?? []
 
-            unreadCount = notifications.filter { !$0.isRead }.count
+            rebuildDerivedState()
             updateStorageInfo()
         } catch {
             print("Fetch error: \(error)")
         }
+    }
+
+    /// unreadCount / apps を notifications から再計算
+    private func rebuildDerivedState() {
+        unreadCount = notifications.reduce(0) { $0 + ($1.isRead ? 0 : 1) }
+
+        var appMap: [String: (name: String, count: Int)] = [:]
+        for n in notifications {
+            if let existing = appMap[n.appIdentifier] {
+                appMap[n.appIdentifier] = (existing.name, existing.count + 1)
+            } else {
+                appMap[n.appIdentifier] = (n.appName, 1)
+            }
+        }
+        apps = appMap.map { (identifier: $0.key, name: $0.value.name, count: $0.value.count) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     /// 指定IDの通知の画像データを取得
@@ -265,60 +295,7 @@ final class StorageManager: ObservableObject {
         notifications.filter { !$0.isRead }
     }
 
-    /// アプリ一覧を取得
-    func fetchApps() -> [(identifier: String, name: String, count: Int)] {
-        var apps: [String: (name: String, count: Int)] = [:]
 
-        for notification in notifications {
-            if let existing = apps[notification.appIdentifier] {
-                apps[notification.appIdentifier] = (existing.name, existing.count + 1)
-            } else {
-                apps[notification.appIdentifier] = (notification.appName, 1)
-            }
-        }
-
-        return apps.map { (identifier: $0.key, name: $0.value.name, count: $0.value.count) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
-
-    /// 日別にグループ化
-    func groupByDate() -> [(date: String, notifications: [NotificationItem])] {
-        let calendar = Calendar.current
-        var groups: [String: (date: Date, notifications: [NotificationItem])] = [:]
-
-        for notification in notifications {
-            let key: String
-            let groupDate: Date
-
-            if calendar.isDateInToday(notification.timestamp) {
-                key = "今日"
-                groupDate = calendar.startOfDay(for: Date())
-            } else if calendar.isDateInYesterday(notification.timestamp) {
-                key = "昨日"
-                groupDate = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date()))!
-            } else {
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "ja_JP")
-                formatter.dateFormat = "M月d日（E）"
-                key = formatter.string(from: notification.timestamp)
-                groupDate = calendar.startOfDay(for: notification.timestamp)
-            }
-
-            if groups[key] == nil {
-                groups[key] = (date: groupDate, notifications: [])
-            }
-            groups[key]?.notifications.append(notification)
-        }
-
-        // Dateでソート（新しい順）
-        let sortedKeys = groups.keys.sorted { key1, key2 in
-            let date1 = groups[key1]!.date
-            let date2 = groups[key2]!.date
-            return date1 > date2
-        }
-
-        return sortedKeys.map { (date: $0, notifications: groups[$0]!.notifications) }
-    }
 
     // MARK: - Storage Info
 
