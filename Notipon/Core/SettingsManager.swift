@@ -27,6 +27,9 @@ final class SettingsManager: ObservableObject {
         static let popupOpacity = "popupOpacity"
         static let popupDuration = "popupDuration"
         static let popupFontSize = "popupFontSize"
+        static let popupSoundEnabled = "popupSoundEnabled"
+        static let popupSoundName = "popupSoundName"
+        static let popupSoundVolume = "popupSoundVolume"
         // ショートカット設定
         static let shortcutOpenHistory = "shortcutOpenHistory"
         static let shortcutFocusSearch = "shortcutFocusSearch"
@@ -117,6 +120,21 @@ final class SettingsManager: ObservableObject {
     /// ポップアップ文字サイズ
     @Published var popupFontSize: CGFloat {
         didSet { defaults.set(Double(popupFontSize), forKey: Keys.popupFontSize) }
+    }
+
+    /// ポップアップサウンドを有効にする
+    @Published var popupSoundEnabled: Bool {
+        didSet { defaults.set(popupSoundEnabled, forKey: Keys.popupSoundEnabled) }
+    }
+
+    /// ポップアップサウンド名（NSSound名 / "None"なら無音）
+    @Published var popupSoundName: String {
+        didSet { defaults.set(popupSoundName, forKey: Keys.popupSoundName) }
+    }
+
+    /// ポップアップサウンド音量 (0.0-1.0)
+    @Published var popupSoundVolume: Double {
+        didSet { defaults.set(popupSoundVolume, forKey: Keys.popupSoundVolume) }
     }
 
     // MARK: - Keyboard Shortcuts
@@ -271,6 +289,11 @@ final class SettingsManager: ObservableObject {
         popupDuration = defaults.object(forKey: Keys.popupDuration) as? Int ?? 5
         popupFontSize = CGFloat(defaults.double(forKey: Keys.popupFontSize) != 0 ? defaults.double(forKey: Keys.popupFontSize) : 14.0)
 
+        // サウンド設定（デフォルト: 有効、Tink、音量70%）
+        popupSoundEnabled = defaults.object(forKey: Keys.popupSoundEnabled) as? Bool ?? true
+        popupSoundName = defaults.string(forKey: Keys.popupSoundName) ?? SoundPlayer.defaultSoundName
+        popupSoundVolume = defaults.object(forKey: Keys.popupSoundVolume) as? Double ?? 0.7
+
         // ショートカット設定
         if let data = defaults.data(forKey: Keys.shortcutOpenHistory),
            let shortcut = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
@@ -336,6 +359,9 @@ final class SettingsManager: ObservableObject {
         popupOpacity = 0.95
         popupDuration = 5
         popupFontSize = 14
+        popupSoundEnabled = true
+        popupSoundName = SoundPlayer.defaultSoundName
+        popupSoundVolume = 0.7
 
         // ショートカット設定をリセット
         shortcutOpenHistory = .openHistory

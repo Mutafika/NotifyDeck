@@ -80,7 +80,16 @@ final class NotificationPopupController: ObservableObject {
 
         self.currentNotification = notification
         self.showPopupWindow()
+        self.playSoundIfNeeded()
         self.startDismissTimer()
+    }
+
+    /// 設定に応じてサウンドを再生（表示と同時に鳴らす）
+    private func playSoundIfNeeded() {
+        guard settingsManager.popupSoundEnabled else { return }
+        let name = settingsManager.popupSoundName
+        guard !name.isEmpty, name != "None" else { return }
+        SoundPlayer.shared.play(name: name, volume: Float(settingsManager.popupSoundVolume))
     }
 
     /// 複数の通知を一度に表示（最新のみ表示）

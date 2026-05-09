@@ -333,6 +333,34 @@ struct SettingsView: View {
                     }
                 }
 
+                // サウンド設定
+                Toggle("通知音を鳴らす", isOn: $settingsManager.popupSoundEnabled)
+
+                if settingsManager.popupSoundEnabled {
+                    HStack {
+                        Text("サウンド:")
+                        Picker("", selection: $settingsManager.popupSoundName) {
+                            ForEach(SoundPlayer.systemSoundNames, id: \.self) { name in
+                                Text(name).tag(name)
+                            }
+                        }
+                        .labelsHidden()
+                        Button("試聴") {
+                            SoundPlayer.shared.play(
+                                name: settingsManager.popupSoundName,
+                                volume: Float(settingsManager.popupSoundVolume)
+                            )
+                        }
+                    }
+
+                    HStack {
+                        Text("音量:")
+                        Slider(value: $settingsManager.popupSoundVolume, in: 0.0...1.0, step: 0.05)
+                        Text("\(Int(settingsManager.popupSoundVolume * 100))%")
+                            .frame(width: 40)
+                    }
+                }
+
                 // テスト・プレビューボタン
                 HStack {
                     Button("プレビュー表示") {
