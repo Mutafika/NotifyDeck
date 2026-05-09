@@ -9,15 +9,13 @@ final class NotificationPopupController: ObservableObject {
     private var popupWindow: NSWindow?
     private var hostingView: NSHostingView<AnyView>?
     private var dismissTimer: Timer?
+    private var fadeTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     private let settingsManager = SettingsManager.shared
     private var isUpdatingFromSettings = false  // 無限ループ防止フラグ
 
     /// 現在表示中の通知
     @Published var currentNotification: NotificationItem?
-
-    /// 通知キュー（複数通知が同時に来た場合）
-    private var notificationQueue: [NotificationItem] = []
 
     private init() {
         observeSettings()
@@ -29,6 +27,7 @@ final class NotificationPopupController: ObservableObject {
 
     deinit {
         dismissTimer?.invalidate()
+        fadeTimer?.invalidate()
         cancellables.removeAll()
     }
 
@@ -68,16 +67,15 @@ final class NotificationPopupController: ObservableObject {
 
     // MARK: - Show Notification
 
-    /// 通知をポップアップ表示
+    /// 通知をポップアップ表示（最新優先・古いポップアップは破棄）
     func show(_ notification: NotificationItem) {
         guard settingsManager.popupEnabled else { return }
 
-        // 既にポップアップが表示中なら、キューに追加
-        if self.currentNotification != nil {
-            self.notificationQueue.append(notification)
-            return
-        }
+        // 進行中のフェードがあれば止めて、ウィンドウを再表示状態に戻す
+        fadeTimer?.invalidate()
+        fadeTimer = nil
 
+        // 内容を最新に差し替えて表示時間をリセット
         self.currentNotification = notification
         self.showPopupWindow()
         self.playSoundIfNeeded()
@@ -182,29 +180,50 @@ final class NotificationPopupController: ObservableObject {
         dismissTimer?.invalidate()
         dismissTimer = nil
 
-        // フェードアウトアニメーション
-        NSAnimationContext.runAnimationGroup({ [weak self] context in
-            context.duration = 0.2
-            self?.popupWindow?.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            self?.popupWindow?.orderOut(nil)
-            self?.currentNotification = nil
+        // 自前のTimerフェードアウト（NSAnimationContext.animator()のover-release回避）
+        startFadeOut()
+    }
 
-            // キューに次の通知があれば表示
-            if let next = self?.notificationQueue.first {
-                self?.notificationQueue.removeFirst()
-                self?.show(next)
+    private func startFadeOut() {
+        fadeTimer?.invalidate()
+
+        guard let window = popupWindow else {
+            finishDismiss()
+            return
+        }
+
+        let duration: TimeInterval = 0.2
+        let startAlpha = window.alphaValue
+        let startTime = Date()
+
+        fadeTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+            guard let self = self, let window = self.popupWindow else {
+                timer.invalidate()
+                return
             }
-        })
+            let progress = min(1.0, Date().timeIntervalSince(startTime) / duration)
+            window.alphaValue = startAlpha * CGFloat(1.0 - progress)
+            if progress >= 1.0 {
+                timer.invalidate()
+                self.fadeTimer = nil
+                self.finishDismiss()
+            }
+        }
+    }
+
+    private func finishDismiss() {
+        popupWindow?.orderOut(nil)
+        currentNotification = nil
     }
 
     /// 手動で即座に閉じる
     func dismissImmediately() {
         dismissTimer?.invalidate()
         dismissTimer = nil
+        fadeTimer?.invalidate()
+        fadeTimer = nil
         popupWindow?.orderOut(nil)
         currentNotification = nil
-        notificationQueue.removeAll()
     }
 
     // MARK: - Action
