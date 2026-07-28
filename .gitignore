@@ -12,6 +12,7 @@ xcuserdata/
 *.xccheckout
 *.moved-aside
 DerivedData/
+build_temp/
 *.hmap
 *.ipa
 *.xcuserstate
